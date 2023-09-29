@@ -1,0 +1,199 @@
+###############################################################################
+#
+# IAR ANSI C/C++ Compiler V9.30.1.335/W64 for ARM         29/Sep/2023  15:37:33
+# Copyright 1999-2022 IAR Systems AB.
+#
+#    Cpu mode                     =  thumb
+#    Endian                       =  little
+#    Source file                  =  F:\work\Lab1\main.cpp
+#    Command line                 =
+#        -f F:\work\Lab1\Debug\Obj\main.o.rsp (F:\work\Lab1\main.cpp -lC
+#        F:\work\Lab1\Debug\List\ -lA F:\work\Lab1\Debug\List\ -o
+#        F:\work\Lab1\Debug\Obj\ --no_cse --no_unroll --no_inline
+#        --no_code_motion --no_tbaa --no_clustering --no_scheduling --debug
+#        --endian=little --cpu=Cortex-M4 -e --fpu=VFPv4_sp --dlib_config
+#        "C:\Program Files\IAR Systems\Embedded Workbench
+#        9.1\arm\inc\c\DLib_Config_Normal.h" -I F:\work\Lab1\Common\ -I
+#        F:\work\Lab1\AHardware\Registers\STM32F411\FieldValues\ -I
+#        F:\work\Lab1\AHardware\Registers\STM32F411\ -I
+#        F:\work\Lab1\AHardware\Registers\ -I
+#        F:\work\Lab1\AHardware\Registers\CortexM4\ -I
+#        F:\work\Lab1\AHardware\Registers\CortexM4\FieldValues\ -On --c++
+#        --no_exceptions --no_rtti) --dependencies=n
+#        F:\work\Lab1\Debug\Obj\main.o.d
+#    Locale                       =  C
+#    List file                    =  F:\work\Lab1\Debug\List\main.lst
+#    Object file                  =  F:\work\Lab1\Debug\Obj\main.o
+#    Runtime model:                  
+#      __CPP_Exceptions           =  Disabled
+#      __CPP_Language             =  C++14
+#      __CPP_Library              =  DLib
+#      __CPP_Runtime              =  1
+#      __SystemLibrary            =  DLib
+#      __dlib_file_descriptor     =  0
+#      __dlib_full_locale_support =  0
+#      __dlib_version             =  6
+#
+###############################################################################
+
+F:\work\Lab1\main.cpp
+      1          #include "rccregisters.hpp" // for RCC
+      2          #include "gpioaregisters.hpp" // for GPIOA
+      3          #include "gpiocregisters.hpp" // for GPIOС
+      4          
+
+   \                                 In section .data, align 4
+      5          std::uint32_t SystemCoreClock = 16'000'000U;
+   \                     SystemCoreClock:
+   \        0x0   0x00F4'2400        DC32 16'000'000
+      6          
+
+   \                                 In section .text, align 4, keep-with-next
+      7          void delay(int cycles)
+      8          {
+      9            for(int i = 0; i < cycles; ++i)    
+   \                     _Z5delayi: (+1)
+   \        0x0   0x2100             MOVS     R1,#+0
+   \                     ??delay_0: (+1)
+   \        0x2   0x4281             CMP      R1,R0
+   \        0x4   0xDA01             BGE.N    ??delay_1
+     10            {   
+     11              asm volatile("");
+   \        0x6   0x1C49             ADDS     R1,R1,#+1
+   \        0x8   0xE7FB             B.N      ??delay_0
+     12            }    
+     13          }
+   \                     ??delay_1: (+1)
+   \        0xA   0x4770             BX       LR
+     14          
+
+   \                                 In section .text, align 2, keep-with-next
+     15          int main()
+     16          {  
+   \                     main: (+1)
+   \        0x0   0xE92D 0x43F8      PUSH     {R3-R9,LR}
+     17            //Подать тактирование на порт А
+     18            RCC::AHB1ENR::GPIOAEN::Enable::Set() ;
+   \        0x4   0x....             LDR.N    R1,??DataTable1
+   \        0x6   0x6808             LDR      R0,[R1, #+0]
+   \        0x8   0xF050 0x0201      ORRS     R2,R0,#0x1
+   \        0xC   0x600A             STR      R2,[R1, #+0]
+     19            //Подать тактирование на порт С
+     20            RCC::AHB1ENR::GPIOCEN::Enable::Set() ;
+   \        0xE   0x680A             LDR      R2,[R1, #+0]
+   \       0x10   0xF052 0x0304      ORRS     R3,R2,#0x4
+   \       0x14   0x600B             STR      R3,[R1, #+0]
+     21            //Порта А.5 на вывод
+     22            GPIOA::MODER::MODER5::Output::Set() ;
+   \       0x16   0x....             LDR.N    R3,??DataTable1_1
+   \       0x18   0x6819             LDR      R1,[R3, #+0]
+   \       0x1A   0xF431 0x6440      BICS     R4,R1,#0xC00
+   \       0x1E   0xF454 0x6480      ORRS     R4,R4,#0x400
+   \       0x22   0x601C             STR      R4,[R3, #+0]
+     23            //Порта C.5,C.8, C.9 на вывод
+     24            GPIOC::MODER::MODER5::Output::Set() ;
+   \       0x24   0x....             LDR.N    R4,??DataTable1_2
+   \       0x26   0x6823             LDR      R3,[R4, #+0]
+   \       0x28   0xF433 0x6540      BICS     R5,R3,#0xC00
+   \       0x2C   0xF455 0x6580      ORRS     R5,R5,#0x400
+   \       0x30   0x6025             STR      R5,[R4, #+0]
+     25            GPIOC::MODER::MODER8::Output::Set() ;
+   \       0x32   0x6825             LDR      R5,[R4, #+0]
+   \       0x34   0xF435 0x3640      BICS     R6,R5,#0x30000
+   \       0x38   0xF456 0x3680      ORRS     R6,R6,#0x10000
+   \       0x3C   0x6026             STR      R6,[R4, #+0]
+     26            GPIOC::MODER::MODER9::Output::Set() ;
+   \       0x3E   0x6826             LDR      R6,[R4, #+0]
+   \       0x40   0xF436 0x2740      BICS     R7,R6,#0xC0000
+   \       0x44   0xF457 0x2780      ORRS     R7,R7,#0x40000
+   \       0x48   0x6027             STR      R7,[R4, #+0]
+     27            
+     28            for(;;)
+     29            {
+     30             
+     31               GPIOA::ODR::ODR5::High::Set();
+   \                     ??main_0: (+1)
+   \       0x4A   0x....             LDR.N    R5,??DataTable1_3
+   \       0x4C   0x682C             LDR      R4,[R5, #+0]
+   \       0x4E   0xF054 0x0020      ORRS     R0,R4,#0x20
+   \       0x52   0x6028             STR      R0,[R5, #+0]
+     32               GPIOC::ODR::ODR5::High::Set();
+   \       0x54   0x....             LDR.N    R6,??DataTable1_4
+   \       0x56   0x6837             LDR      R7,[R6, #+0]
+   \       0x58   0xF057 0x0020      ORRS     R0,R7,#0x20
+   \       0x5C   0x6030             STR      R0,[R6, #+0]
+     33               delay(1000000); 
+   \       0x5E   0x.... 0x....      LDR.W    R8,??DataTable1_5
+   \       0x62   0x4640             MOV      R0,R8
+   \       0x64   0x.... 0x....      BL       _Z5delayi
+     34               GPIOA::ODR::ODR5::Low::Set();
+   \       0x68   0xF8D5 0x9000      LDR      R9,[R5, #+0]
+   \       0x6C   0xF039 0x0020      BICS     R0,R9,#0x20
+   \       0x70   0x6028             STR      R0,[R5, #+0]
+     35               GPIOC::ODR::ODR5::Low::Set();
+   \       0x72   0x6835             LDR      R5,[R6, #+0]
+   \       0x74   0xF035 0x0020      BICS     R0,R5,#0x20
+   \       0x78   0x6030             STR      R0,[R6, #+0]
+     36               delay(1000000); 
+   \       0x7A   0x4640             MOV      R0,R8
+   \       0x7C   0x.... 0x....      BL       _Z5delayi
+   \       0x80   0xE7E3             B.N      ??main_0
+     37            }
+     38          }
+
+   \                                 In section .text, align 4, keep-with-next
+   \                     ??DataTable1:
+   \        0x0   0x4002'3830        DC32     0x40023830
+
+   \                                 In section .text, align 4, keep-with-next
+   \                     ??DataTable1_1:
+   \        0x0   0x4002'0000        DC32     0x40020000
+
+   \                                 In section .text, align 4, keep-with-next
+   \                     ??DataTable1_2:
+   \        0x0   0x4002'0800        DC32     0x40020800
+
+   \                                 In section .text, align 4, keep-with-next
+   \                     ??DataTable1_3:
+   \        0x0   0x4002'0014        DC32     0x40020014
+
+   \                                 In section .text, align 4, keep-with-next
+   \                     ??DataTable1_4:
+   \        0x0   0x4002'0814        DC32     0x40020814
+
+   \                                 In section .text, align 4, keep-with-next
+   \                     ??DataTable1_5:
+   \        0x0   0x000F'4240        DC32     0xf4240
+
+   Maximum stack usage in bytes:
+
+   .cstack Function
+   ------- --------
+       0   delay(int)
+      32   main
+        32   -> delay(int)
+
+
+   Section sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+       4  ??DataTable1
+       4  ??DataTable1_1
+       4  ??DataTable1_2
+       4  ??DataTable1_3
+       4  ??DataTable1_4
+       4  ??DataTable1_5
+       4  SystemCoreClock
+      12  delay(int)
+     130  main
+
+ 
+   4 bytes in section .data
+ 166 bytes in section .text
+ 
+ 166 bytes of CODE memory
+   4 bytes of DATA memory
+
+Errors: none
+Warnings: none
