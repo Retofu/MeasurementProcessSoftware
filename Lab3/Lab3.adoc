@@ -131,13 +131,11 @@ extern "C"
 {
   int __low_level_init(void)
   {
-    // Switch on HSI
-    RCC::CR::HSION::On::Set();    
+    RCC::CR::HSION::On::Set();
     while (RCC::CR::HSIRDY::NotReady::IsSet())
-    {      
+    {
+      
     }
-    // Switch on PLL
-    RCC::CR::PLLON::On::Set(); 
     // All PLL to 0
     *reinterpret_cast<std::uint32_t*>(0x40023804) &= 0;
     // PLL with HSI source
@@ -147,7 +145,9 @@ extern "C"
     // PLLM = 16
     *reinterpret_cast<std::uint32_t*>(0x40023804) |= (1U << 4U);
     // PLLN = 64
-    *reinterpret_cast<std::uint32_t*>(0x40023804) |= (1U << 12U);
+    *reinterpret_cast<std::uint32_t*>(0x40023804) |= (1U << 12U); 
+    // Switch on PLL
+    RCC::CR::PLLON::On::Set();
     while (RCC::CR::PLLRDY::Unclocked::IsSet())
     {      
     }
@@ -156,6 +156,7 @@ extern "C"
     while (!RCC::CFGR::SWS::Pll::IsSet())
     {      
     }
+    RCC::CR::HSION::Off::Set();
     RCC::APB2ENR::SYSCFGEN::Enable::Set();   
     return 1;
   }
@@ -171,18 +172,8 @@ void delay(int cycles)
 
 int main()
 {
-  
-  RCC::AHB1ENR::GPIOAEN::Enable::Set() ;
-  
   RCC::AHB1ENR::GPIOCEN::Enable::Set() ;
-  
-  GPIOA::MODER::MODER5::Output::Set() ;
-  
   GPIOC::MODER::MODER5::Output::Set() ;
-  GPIOC::MODER::MODER8::Output::Set() ;
-  GPIOC::MODER::MODER9::Output::Set() ;
-
-  GPIOC::ODR::ODR8::High::Set();
   std::uint32_t* ptrC = reinterpret_cast<std::uint32_t*>(0x40020814) ; // регистр GPIOC
   for(;;)
   {
@@ -191,7 +182,7 @@ int main()
      *ptrC &= ~(1U << 5U);
      delay(1000000);
   }
-
+  
   return 1;
 }
 ----
