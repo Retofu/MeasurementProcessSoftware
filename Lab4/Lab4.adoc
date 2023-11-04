@@ -59,44 +59,76 @@ toc::[]
 
 #include "gpiocregisters.hpp" // for GPIOC
 #include "gpioaregisters.hpp" // for GPIOA
+#include "ipin.h" // for IPin
 
 template<typename Port, int pinNumber>
-class Pin
+class Pin : public IPin
 {
 public:
-  void Toggle()
+  void Toggle() const override
   {
     Port::ODR::Toggle(1 << pinNumber) ;
   }
 } ;
 
 #endif
+----
 
-#ifndef GarLand
-#define GarLand
+Листинг ipin.h
+[source, cpp, linenums]
+----
+#ifndef IPIN
+#define IPIN
 
-template<auto& pin1,auto& pin2,auto& pin3,auto& pin4, int& time>
-class Garland
+class IPin
 {
 public:
-    void delay(int cycles)
+  virtual void Toggle() const = 0; 
+};
+
+#endif
+----
+
+Листинг imode.h
+[source, cpp, linenums]
+----
+#ifndef IMODE
+#define IMODE
+
+class IMode
+{
+public:
+  virtual void Update() = 0;
+};
+
+#endif
+----
+
+Листинг treemode.h
+[source, cpp, linenums]
+----
+#ifndef TREEMODE
+#define TREEMODE
+
+#include "imode.h" // for IMode
+#include <array>
+
+template<auto&...pins>
+class TreeMode : public IMode
+{
+public:
+  void Update() override
+  {
+    // код для елочки
+    leds[i++]->Toggle();
+    if(i == leds.size())
     {
-      for(int i = 0; i < cycles; ++i)
-      {
-        asm volatile("");
-      }
+      i = 0;
     }
-    void Switch()
-    {
-      pin1.Toggle();
-      delay(time);
-      pin2.Toggle();
-      delay(time);
-      pin3.Toggle();
-      delay(time);
-      pin4.Toggle();
-      delay(time);
-    }
+  }
+private:
+  std::size_t i = 0;
+  std::array<IPin*, sizeof ...(pins)> leds = {&pins...};
 };
 
 #endif
@@ -108,23 +140,27 @@ public:
 #include "rccregisters.hpp" // for RCC
 #include "gpioaregisters.hpp" // for GPIOA
 #include "pin.h"
+#include "ipin.h"
 #include "gpiocregisters.hpp" // for GPIOC
+#include <iostream>
+#include <array>
+#include "treemode.h" // for TreeMode
 
 std::uint32_t SystemCoreClock = 16'000'000U;
 
-extern "C" {
-  int __low_level_init(void)
-  {
-  }
-}
+void delay(int cycles)
+    {
+      for(int i = 0; i < cycles; ++i)
+      {
+        asm volatile("");
+      }
+    }
 
 Pin<GPIOA,5> pin1 ;
 Pin<GPIOC,9> pin2 ;
 Pin<GPIOC,8> pin3 ;
 Pin<GPIOC,5> pin4 ;
-int time = 2500000 ;
-Garland<pin1,pin2,pin3,pin4,time> garland;
-
+TreeMode<pin1, pin2, pin3, pin4> treeMode;
 int main()
 {
   
@@ -137,13 +173,12 @@ int main()
   GPIOC::MODER::MODER5::Output::Set() ;
   GPIOC::MODER::MODER8::Output::Set() ;
   GPIOC::MODER::MODER9::Output::Set() ;
-  
   for(;;)
   {
     // Гирлянда: зажечь 1 светодиод, задержка, 2, задержка и т.д. И потом также гасить
-    garland.Switch() ;
+    treeMode.Update();
+    delay(2500000);
   }
-  
   return 1;
 }
 ----
@@ -155,4 +190,4 @@ video::Video.mp4[opts="muted"]
 
 == Вывод по работе
 
-В ходе данной работы было проведено ознакомление с портами и их режимами работы. Была написана программа, которая переключала светодиоды по заданному алгоритму.
+В ходе данной работы было проведено ознакомление с портами и их режимами работы. Была написана программа, которая переключает светодиоды по заданному алгоритму.
