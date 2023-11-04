@@ -86,7 +86,7 @@ public:
         asm volatile("");
       }
     }
-    void Toggle_Garland()
+    void Switch()
     {
       pin1.Toggle();
       delay(time);
@@ -141,7 +141,7 @@ int main()
   for(;;)
   {
     // Гирлянда: зажечь 1 светодиод, задержка, 2, задержка и т.д. И потом также гасить
-    garland.Toggle_Garland() ;
+    garland.Switch() ;
   }
   
   return 1;
