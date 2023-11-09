@@ -1,0 +1,179 @@
+:imagesdir: Lab5Img
+:figure-caption: Рисунок
+:table-caption: Таблица
+:toc-title: Оглавление
+:toc: macro
+
+include::Titul.adoc[lines="1..8"]
+Отчет по лабораторной работе №5
+include::Titul.adoc[lines="11..23"]
+
+toc::[]
+
+== Задание
+
+. Написать про принципы SOLID в программировании.
+. Сделать программу, которая будет переключать светодиоды на плате по алгоритму "шахматы": включить нечетные светодиоды, задержка, выключить нечетные и включить четные светодиоды, задержка и т.д. Выполнить основную часть программы с помощью отдельного класса.
+
+=== SOLID принципы
+
+SOLID - это основные принципы разработки программного обеспечения, следуя которым можно получить хороший код, который в дальнейшем будет хорошо масштабироваться и поддерживаться в рабочем состоянии:
+
+* S (Single Responsibility Principle, принцип единственной ответственности) - каждый класс должен иметь только одну зону ответственности;
+
+* O (Open closed Principle, принцип открытости-закрытости) - классы должны быть открыты для расширения, но закрыты для изменения;
+
+* L (Liskov substitution Principle, принцип подстановки Барбары Лисков) - должна быть возможность вместо базового (родительского) типа (класса) подставить любой его подтип (класс-наследник), при этом работа программы не должна измениться;
+
+* I (Interface Segregation Principle, принцип разделения интерфейсов) - данный принцип обозначает, что не нужно заставлять клиента (класс) реализовывать интерфейс, который не имеет к нему отношения;
+
+* D (Dependency Inversion Principle, принцип инверсии зависимостей) - модули верхнего уровня не должны зависеть от модулей нижнего уровня. И те, и другие должны зависеть от абстракции. Абстракции не должны зависеть от деталей. Детали должны зависеть от абстракций.
+
+Принципы SOLID — это руководства, которые также могут применяться во время работы над существующим программным обеспечением для его улучшения. Стратегии гибкой и адаптивной разработки предполагают написание кода с соблюдением принципов SOLID.
+
+=== Шахматы
+
+Листинг pin.h
+[source, cpp, linenums]
+----
+#ifndef PIN
+#define PIN
+#include "gpiocregisters.hpp" // for GPIOC
+#include "gpioaregisters.hpp" // for GPIOA
+#include "ipin.h" // for IPin
+template<typename Port, int pinNumber>
+class Pin : public IPin
+{
+public:
+  void Toggle() const override
+  {
+    Port::ODR::Toggle(1 << pinNumber) ;
+  }
+} ;
+#endif
+----
+
+Листинг ipin.h
+[source, cpp, linenums]
+----
+#ifndef IPIN
+#define IPIN
+class IPin
+{
+public:
+  virtual void Toggle() const = 0; 
+};
+#endif
+----
+
+Листинг imode.h
+[source, cpp, linenums]
+----
+#ifndef IMODE
+#define IMODE
+class IMode
+{
+public:
+  virtual void Update() = 0;
+};
+#endif
+----
+
+Листинг chessmode.h
+[source, cpp, linenums]
+----
+#ifndef CHESSMODE
+#define CHESSMODE
+
+#include "imode.h" // for IMode
+#include <array>
+
+template<auto&...pins>
+class ChessMode : public IMode
+{
+private:
+  std::uint8_t i = 0;
+  bool flag = true; // для переключения с нечетных на четные (если true, то нечетные)
+public:
+  void Update() override
+  {
+    // шахматный порядок
+    if(flag) // нечетные
+    {
+      for(i = 0; i < leds.size(); i+=2)
+      {
+        leds[i]->Toggle();
+      }
+    } else if(!flag) // четные
+    {
+      for(auto it: leds)
+      {
+        it->Toggle();
+      }
+    }
+    flag = false;
+  }
+private:
+  std::array<IPin*, sizeof ...(pins)> leds = {&pins...};
+};
+
+#endif
+----
+
+Листинг main.cpp
+[source, cpp, linenums]
+----
+#include "rccregisters.hpp" // for RCC
+#include "gpioaregisters.hpp" // for GPIOA
+#include "pin.h"
+#include "ipin.h"
+#include "gpiocregisters.hpp" // for GPIOC
+#include <iostream>
+#include <array>
+#include "treemode.h" // for TreeMode
+#include "chessmode.h" // for ChessMode
+std::uint32_t SystemCoreClock = 16'000'000U;
+void delay(int cycles)
+    {
+      for(int i = 0; i < cycles; ++i)
+      {
+        asm volatile("");
+      }
+    }
+Pin<GPIOA,5> pin1 ;
+Pin<GPIOC,9> pin2 ;
+Pin<GPIOC,8> pin3 ;
+Pin<GPIOC,5> pin4 ;
+//TreeMode<pin1, pin2, pin3, pin4> treeMode;
+ChessMode<pin1, pin2, pin3, pin4> chessMode;
+int main()
+{
+  //Подать тактирование на порт А
+  RCC::AHB1ENR::GPIOAEN::Enable::Set() ;
+  //Подать тактирование на порт С
+  RCC::AHB1ENR::GPIOCEN::Enable::Set() ;
+  GPIOA::MODER::MODER5::Output::Set() ; // установить порт А.5 на выход
+  //Светодиоды на портах C.5,C.8, C.9 на выход
+  GPIOC::MODER::MODER5::Output::Set() ;
+  GPIOC::MODER::MODER8::Output::Set() ;
+  GPIOC::MODER::MODER9::Output::Set() ;
+  for(;;)
+  {
+    // Гирлянда: зажечь 1 светодиод, задержка, 2, задержка и т.д. И потом также гасить
+    // treeMode.Update();
+    // Шахматы;
+    chessMode.Update();
+    delay(2500000);
+  }
+  return 1;
+}
+----
+
+На видео представлена работа программы.
+
+.Видео - Демонстрация "шахмат"
+video::Video.mp4[opts="muted"]
+
+== Вывод по работе
+
+В ходе данной работы были описаны SOLID принципы программирования. Была написана программа, которая переключает светодиоды по заданному алгоритму "шахматы".
