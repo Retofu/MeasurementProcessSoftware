@@ -104,7 +104,7 @@ public:
       {
         leds[i]->Toggle();
       }
-    } else if(!flag) // четные
+    } else // четные
     {
       for(auto it: leds)
       {
@@ -125,11 +125,9 @@ private:
 ----
 #include "rccregisters.hpp" // for RCC
 #include "gpioaregisters.hpp" // for GPIOA
-#include "pin.h"
-#include "ipin.h"
+#include "pin.h" // for LED toggle
+#include "ipin.h" // Interface for pin.h
 #include "gpiocregisters.hpp" // for GPIOC
-#include <iostream>
-#include <array>
 #include "treemode.h" // for TreeMode
 #include "chessmode.h" // for ChessMode
 std::uint32_t SystemCoreClock = 16'000'000U;
