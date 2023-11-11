@@ -45,8 +45,6 @@ SOLID - это основные принципы разработки прогр
 ----
 #ifndef PIN
 #define PIN
-#include "gpiocregisters.hpp" // for GPIOC
-#include "gpioaregisters.hpp" // for GPIOA
 #include "ipin.h" // for IPin
 template<typename Port, int pinNumber>
 class Pin : public IPin
@@ -103,11 +101,10 @@ private:
 public:
   void Update() override
   {
-    std::size_t i = 0;
     // шахматный порядок
     if(flag) // нечетные
     {
-      for(i = 0; i < leds.size(); i+=2)
+      for(std::size_t i = 0; i < leds.size(); i+=2)
       {
         leds[i]->Toggle();
       }
@@ -148,7 +145,6 @@ Pin<GPIOA,5> pin1 ;
 Pin<GPIOC,9> pin2 ;
 Pin<GPIOC,8> pin3 ;
 Pin<GPIOC,5> pin4 ;
-//TreeMode<pin1, pin2, pin3, pin4> treeMode;
 ChessMode<pin1, pin2, pin3, pin4> chessMode;
 int main()
 {
@@ -163,8 +159,6 @@ int main()
   GPIOC::MODER::MODER9::Output::Set() ;
   for(;;)
   {
-    // Гирлянда: зажечь 1 светодиод, задержка, 2, задержка и т.д. И потом также гасить
-    // treeMode.Update();
     // Шахматы;
     chessMode.Update();
     delay(2500000);
