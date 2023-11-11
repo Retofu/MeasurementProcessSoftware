@@ -1,0 +1,193 @@
+:imagesdir: Lab4Img
+:figure-caption: Рисунок
+:table-caption: Таблица
+:toc-title: Оглавление
+:toc: macro
+
+include::Titul.adoc[lines="1..8"]
+Отчет по лабораторной работе №4
+include::Titul.adoc[lines="11..23"]
+
+toc::[]
+
+== Задание
+
+. Написать что было изучено про порты на лекции;
+
+. Сделать программу, которая будет переключать светодиоды на плате по алгоритму: включить 1 светодиод, задержка, 2, задержка и т.д, а затем также выключить, начиная с 1 светодиода. Выполнить основную часть программы с помощью отдельного класса.
+
+=== Порты
+
+Порт - это устройство для обмена данными (ввод и вывод). С помощью портов можно управлять работой других устройств. На плате есть 5 портов общего назначения, 16 линий ввода/вывода.
+
+Порты могут работать в разных режимах:
+
+. плавающий цифровой вход;
+. цифровой вход с подтяжкой к 1;
+. цифровой вход с подтяжкой к 0;​
+. аналоговый;​
+. цифровой выход с открытым коллектором с подтяжкой к 1 или к 0;
+. цифровой двухтактный выход с подтяжкой к 1 или к 0;
+. альтернативная функция с открытым коллектором с подтяжкой к 1 или к 0;
+. альтернативная функция двухтактный выход с подтяжкой к 1 или к 0.
+
+Особенности режимов:
+
+* В цифровом режиме у порта есть 2 состояния: 1 и 0, соответственно, высокий уровень напряжения и нулевой. Когда порт настроен как цифровой вход его сопротивление бесконечно, контакт никуда не подключен, поэтому ток не протекает. +
+ Любое напряжение на ножке порта будет интерпретировано как 1 или 0, в зависимости от уровня напряжения. В таком случае это называется "подвешенная" или плавающая ножка, а наводка или шум на этой ножке могут быть интерпретированы как 1 или 0 в зависимости от уровня шума. Таким образом, плавающая ножка может вызывать "дребезг" (ложные сигналы), что является недостатком данного режима.
+
+* Чтобы убрать недостаток плавающей ножки обычно её подтягивают к 1 или 0. При подтяжке к 1 на входе всегда 1 пока не замкнут ключ. При подтяжке к 0 на входе всегда 0, пока не подано напряжение.
+
+Регистры портов:
+
+. GPIOx_MODER - задает режимы работы индивидуально каждого из вывода порта;
+. GPIOx_OSPEEDR - задает скорость работы порта;
+. GPIOx_PUPDR - задает подключение подтягивающих резисторов;
+. GPIOx_IDR - регистр входных данных, из которого считывается состояние входов порта;
+. GPIOx_ODR - регистр выходных данных;
+. GPIOx_OTYPER - в режиме выхода или альтернативной функции, соответствующий бит регистра устанавливает тип выхода;
+. GPIOx_BSRR - это регистр побитовой установки/сброса данных на выходных линиях порта;
+. GPIOxLCKR - регистр, позволяющий защитить текущую настройку конфигурации.
+
+=== Гирлянда
+
+Листинг pin.h
+[source, cpp, linenums]
+----
+#ifndef PIN
+#define PIN
+
+#include "gpiocregisters.hpp" // for GPIOC
+#include "gpioaregisters.hpp" // for GPIOA
+#include "ipin.h" // for IPin
+
+template<typename Port, int pinNumber>
+class Pin : public IPin
+{
+public:
+  void Toggle() const override
+  {
+    Port::ODR::Toggle(1 << pinNumber) ;
+  }
+} ;
+
+#endif
+----
+
+Листинг ipin.h
+[source, cpp, linenums]
+----
+#ifndef IPIN
+#define IPIN
+
+class IPin
+{
+public:
+  virtual void Toggle() const = 0; 
+};
+
+#endif
+----
+
+Листинг imode.h
+[source, cpp, linenums]
+----
+#ifndef IMODE
+#define IMODE
+
+class IMode
+{
+public:
+  virtual void Update() = 0;
+};
+
+#endif
+----
+
+Листинг treemode.h
+[source, cpp, linenums]
+----
+#ifndef TREEMODE
+#define TREEMODE
+
+#include "imode.h" // for IMode
+#include <array>
+
+template<auto&...pins>
+class TreeMode : public IMode
+{
+public:
+  void Update() override
+  {
+    // код для елочки
+    leds[i++]->Toggle();
+    if(i == leds.size())
+    {
+      i = 0;
+    }
+  }
+private:
+  std::size_t i = 0;
+  std::array<IPin*, sizeof ...(pins)> leds = {&pins...};
+};
+
+#endif
+----
+
+Листинг main.cpp
+[source, cpp, linenums]
+----
+#include "rccregisters.hpp" // for RCC
+#include "gpioaregisters.hpp" // for GPIOA
+#include "pin.h"
+#include "ipin.h"
+#include "gpiocregisters.hpp" // for GPIOC
+#include <iostream>
+#include <array>
+#include "treemode.h" // for TreeMode
+
+std::uint32_t SystemCoreClock = 16'000'000U;
+
+void delay(int cycles)
+    {
+      for(int i = 0; i < cycles; ++i)
+      {
+        asm volatile("");
+      }
+    }
+
+Pin<GPIOA,5> pin1 ;
+Pin<GPIOC,9> pin2 ;
+Pin<GPIOC,8> pin3 ;
+Pin<GPIOC,5> pin4 ;
+TreeMode<pin1, pin2, pin3, pin4> treeMode;
+int main()
+{
+  
+  //Подать тактирование на порт А
+  RCC::AHB1ENR::GPIOAEN::Enable::Set() ;
+  //Подать тактирование на порт С
+  RCC::AHB1ENR::GPIOCEN::Enable::Set() ;
+  GPIOA::MODER::MODER5::Output::Set() ; // установить порт А.5 на выход
+  //Светодиоды на портах C.5,C.8, C.9 на выход
+  GPIOC::MODER::MODER5::Output::Set() ;
+  GPIOC::MODER::MODER8::Output::Set() ;
+  GPIOC::MODER::MODER9::Output::Set() ;
+  for(;;)
+  {
+    // Гирлянда: зажечь 1 светодиод, задержка, 2, задержка и т.д. И потом также гасить
+    treeMode.Update();
+    delay(2500000);
+  }
+  return 1;
+}
+----
+
+На видео представлена работа программы.
+
+.Видео - Демонстрация "гирлянды"
+video::Video.mp4[opts="muted"]
+
+== Вывод по работе
+
+В ходе данной работы было проведено ознакомление с портами и их режимами работы. Была написана программа, которая переключает светодиоды по заданному алгоритму.
