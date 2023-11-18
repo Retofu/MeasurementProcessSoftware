@@ -253,9 +253,9 @@ class Garland : public IMode
 public:
   void NextMode()
   {
-    i++;
-    pCurrentMode = mod[i];
     pCurrentMode->Clear();
+    pCurrentMode = mod[i];
+    i++;
     if(i == mod.size())
     {
       i = 0;
