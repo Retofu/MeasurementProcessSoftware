@@ -219,19 +219,11 @@ template<typename Port, int pinNumber>
 class Button : public IButton
 {
 public:
-  void delay(int cycles)
-  {
-  for(int i = 0; i < cycles; ++i)
-  {
-    asm volatile("");
-  }
-  }
   bool IsPressed() override // проверка нажатия кнопки
   {
     bool press = false; // нажатие (если false, то нажатия нет)
     if((Port::IDR::Get()&(1 << pinNumber))!=(1 << pinNumber))
     {
-    delay(500000); // задержка
     press = true;
     }
     return press;
@@ -256,7 +248,7 @@ class Garland : public IMode
 public:
   void NextMode()
   {
-    currentMode = mod[i];
+    pCurrentMode = mod[i];
     i++;
     if(i == mod.size())
     {
@@ -265,12 +257,12 @@ public:
   }
   void Update() override
   {
-    currentMode->Update();
+    pCurrentMode->Update();
   }
 private:
   std::size_t i = 0;
   std::array<IMode*, sizeof ...(presets)> mod = {&presets...};
-  IMode* currentMode = mod[0];
+  IMode* pCurrentMode = mod[0];
 };
 #endif
 ----
@@ -321,7 +313,7 @@ int main()
   
   for(;;)
   {
-    if(button.IsPressed() == true)
+    if(button.IsPressed())
     {
     treeMode.Clear(); //
     chessMode.Clear(); // очистка всех режимов, чтобы светодиоды не сбивались
