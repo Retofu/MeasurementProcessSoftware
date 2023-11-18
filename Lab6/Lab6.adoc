@@ -33,7 +33,9 @@ image::Figure.png[]
 ----
 #ifndef PIN
 #define PIN
+
 #include "ipin.h" // for IPin
+
 template<typename Port, int pinNumber>
 class Pin : public IPin
 {
@@ -42,7 +44,12 @@ public:
   {
     Port::ODR::Toggle(1 << pinNumber) ;
   }
+  void Off() const override
+  {
+    Port::ODR::Write(Port::ODR::Get()&~(1 << pinNumber));
+  }
 } ;
+
 #endif
 ----
 
@@ -51,11 +58,14 @@ public:
 ----
 #ifndef IPIN
 #define IPIN
+
 class IPin
 {
 public:
   virtual void Toggle() const = 0; 
+  virtual void Off() const = 0; 
 };
+
 #endif
 ----
 
@@ -69,11 +79,6 @@ class IMode
 {
 public:
   virtual void Update() = 0;
-};
-
-class IModeDefaultSetter // очистка светодиодов
-{
-public:
   virtual void Clear() = 0;
 };
 
@@ -90,18 +95,20 @@ public:
 #include <array>
 
 template<auto&...pins>
-class AllFlickMode : public IMode, public IModeDefaultSetter
+class AllFlickMode : public IMode
 {
 public:
-  void Clear() override
-  {
-    *reinterpret_cast<uint32_t*>(0x40020814) = 0;
-    *reinterpret_cast<uint32_t*>(0x40020014) = 0;
-  }
   void Update() override
   {
     for(std::size_t i=0; i < leds.size();i++){
     leds[i]->Toggle();
+    }
+  }
+  void Clear() override
+  {
+    for(auto it: leds)
+    {
+      it->Off();
     }
   }
 private:
@@ -121,21 +128,23 @@ private:
 #include <array>
 
 template<auto&...pins>
-class TreeMode : public IMode, public IModeDefaultSetter
+class TreeMode : public IMode
 {
 public:
-  void Clear() override
-  {
-    *reinterpret_cast<uint32_t*>(0x40020814) = 0;
-    *reinterpret_cast<uint32_t*>(0x40020014) = 0;
-  }
   void Update() override
   {
-    // код для елочки
     leds[i++]->Toggle();
     if(i == leds.size())
     {
       i = 0;
+    }
+  }
+  void Clear() override
+  {
+    i = 0;
+    for(auto it: leds)
+    {
+      it->Off();
     }
   }
 private:
@@ -156,21 +165,14 @@ private:
 #include <array>
 
 template<auto&...pins>
-class ChessMode : public IMode, public IModeDefaultSetter
+class ChessMode : public IMode
 {
 private:
-  bool flag = true; // для переключения с нечетных на четные (если true, то нечетные)
+  bool isOdd = true;
 public:
-  void Clear() override
-  {
-    flag = true;
-    *reinterpret_cast<uint32_t*>(0x40020814) = 0;
-    *reinterpret_cast<uint32_t*>(0x40020014) = 0;
-  }
   void Update() override
   {
-    // шахматный порядок
-    if(flag) // нечетные
+    if(isOdd) // нечетные
     {
       for(std::size_t i = 0; i < leds.size(); i+=2)
       {
@@ -183,7 +185,15 @@ public:
         it->Toggle();
       }
     }
-    flag = false;
+    isOdd = false;
+  }
+  void Clear() override
+  {
+    isOdd = true;
+    for(auto it: leds)
+    {
+      it->Off();
+    }
   }
 private:
   std::array<IPin*, sizeof ...(pins)> leds = {&pins...};
@@ -201,7 +211,7 @@ private:
 class IButton
 {
 public:
-  virtual bool IsPressed() = 0; 
+  virtual bool IsPressed() const = 0; 
 };
 
 #endif
@@ -219,14 +229,9 @@ template<typename Port, int pinNumber>
 class Button : public IButton
 {
 public:
-  bool IsPressed() override // проверка нажатия кнопки
+  bool IsPressed() const override
   {
-    bool press = false; // нажатие (если false, то нажатия нет)
-    if((Port::IDR::Get()&(1 << pinNumber))!=(1 << pinNumber))
-    {
-    press = true;
-    }
-    return press;
+    return ((Port::IDR::Get()&(1 << pinNumber))!=(1 << pinNumber));
   }
 };
 
@@ -248,8 +253,9 @@ class Garland : public IMode
 public:
   void NextMode()
   {
-    pCurrentMode = mod[i];
     i++;
+    pCurrentMode = mod[i];
+    pCurrentMode->Clear();
     if(i == mod.size())
     {
       i = 0;
@@ -258,6 +264,9 @@ public:
   void Update() override
   {
     pCurrentMode->Update();
+  }
+  void Clear()
+  {
   }
 private:
   std::size_t i = 0;
@@ -295,12 +304,12 @@ Pin<GPIOC,5> pin4 ;
 TreeMode<pin1, pin2, pin3, pin4> treeMode;
 ChessMode<pin1, pin2, pin3, pin4> chessMode;
 AllFlickMode<pin1, pin2, pin3, pin4> allflickMode;
-Garland<allflickMode, treeMode, chessMode> garland; // порядок режимов в гирлянде
-Button<GPIOC, 13> button; // кнопка USER
+Garland<allflickMode, treeMode, chessMode> garland;
+Button<GPIOC, 13> button;
 
 int main()
 {
-  GPIOC::MODER::MODER13::Input::Set() ; // установка порта C.13 кнопки на вход
+  GPIOC::MODER::MODER13::Input::Set() ;
   //Подать тактирование на порт А
   RCC::AHB1ENR::GPIOAEN::Enable::Set() ;
   //Подать тактирование на порт С
@@ -313,14 +322,11 @@ int main()
   
   for(;;)
   {
+    garland.Update();
     if(button.IsPressed())
     {
-    treeMode.Clear(); //
-    chessMode.Clear(); // очистка всех режимов, чтобы светодиоды не сбивались
-    allflickMode.Clear(); // 
-    garland.NextMode(); // следующий режим
+      garland.NextMode();
     }
-    garland.Update();
     delay(2500000);
   }
   
