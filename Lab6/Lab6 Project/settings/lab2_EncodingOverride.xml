@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<userOverrides>
+    <override>
+        <path>F:\work\Lab2\Application\Mode\chessmode.h</path>
+        <encoding>Win-1251</encoding>
+    </override>
+    <override>
+        <path>F:\work\Lab2\Application\Mode\treemode.h</path>
+        <encoding>Win-1251</encoding>
+    </override>
+    <override>
+        <path>F:\work\Lab2\main.cpp</path>
+        <encoding>Win-1251</encoding>
+    </override>
+</userOverrides>

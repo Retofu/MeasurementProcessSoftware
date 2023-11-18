@@ -79,7 +79,7 @@ class IMode
 {
 public:
   virtual void Update() = 0;
-  virtual void Clear() = 0;
+  virtual void SetToDefault() = 0;
 };
 
 #endif
@@ -100,11 +100,12 @@ class AllFlickMode : public IMode
 public:
   void Update() override
   {
-    for(std::size_t i=0; i < leds.size();i++){
-    leds[i]->Toggle();
+    for(std::size_t i = 0; i < leds.size(); i++)
+    {
+      leds[i]->Toggle();
     }
   }
-  void Clear() override
+  void SetToDefault() override
   {
     for(auto it: leds)
     {
@@ -133,22 +134,22 @@ class TreeMode : public IMode
 public:
   void Update() override
   {
-    leds[i++]->Toggle();
-    if(i == leds.size())
+    leds[currentLed++]->Toggle();
+    if(currentLed == leds.size())
     {
-      i = 0;
+      currentLed = 0;
     }
   }
-  void Clear() override
+  void SetToDefault() override
   {
-    i = 0;
+    currentLed = 0;
     for(auto it: leds)
     {
       it->Off();
     }
   }
 private:
-  std::size_t i = 0;
+  std::size_t currentLed = 0;
   std::array<IPin*, sizeof ...(pins)> leds = {&pins...};
 };
 
@@ -162,23 +163,21 @@ private:
 #define CHESSMODE
 
 #include "imode.h" // for IMode
-#include <array>
+#include <array> // for std::array
 
 template<auto&...pins>
 class ChessMode : public IMode
 {
-private:
-  bool isOdd = true;
 public:
   void Update() override
   {
-    if(isOdd) // нечетные
+    if(isOdd)
     {
       for(std::size_t i = 0; i < leds.size(); i+=2)
       {
         leds[i]->Toggle();
       }
-    } else // четные
+    } else
     {
       for(auto it: leds)
       {
@@ -187,7 +186,7 @@ public:
     }
     isOdd = false;
   }
-  void Clear() override
+  void SetToDefault() override
   {
     isOdd = true;
     for(auto it: leds)
@@ -196,6 +195,7 @@ public:
     }
   }
 private:
+  bool isOdd = true;
   std::array<IPin*, sizeof ...(pins)> leds = {&pins...};
 };
 
@@ -245,15 +245,15 @@ public:
 #define GARLAND
 
 #include "imode.h" // for IMode
-#include <array>
+#include <array> // for std::array
 
 template<auto& ...presets>
-class Garland : public IMode
+class Garland
 {
 public:
   void NextMode()
   {
-    pCurrentMode->Clear();
+    pCurrentMode->SetToDefault();
     pCurrentMode = mod[i];
     i++;
     if(i == mod.size())
@@ -261,12 +261,9 @@ public:
       i = 0;
     }
   }
-  void Update() override
+  void Update()
   {
     pCurrentMode->Update();
-  }
-  void Clear()
-  {
   }
 private:
   std::size_t i = 0;
