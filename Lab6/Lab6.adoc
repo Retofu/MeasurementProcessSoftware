@@ -303,6 +303,7 @@ ChessMode<pin1, pin2, pin3, pin4> chessMode;
 AllFlickMode<pin1, pin2, pin3, pin4> allflickMode;
 Garland<allflickMode, treeMode, chessMode> garland;
 Button<GPIOC, 13> button;
+uint8_t buttonPressedMark = 0;
 
 int main()
 {
@@ -320,9 +321,13 @@ int main()
   for(;;)
   {
     garland.Update();
-    if(button.IsPressed())
+    if(button.IsPressed() and buttonPressedMark == 0)
     {
       garland.NextMode();
+      buttonPressedMark = 1;
+    } else
+    {
+      buttonPressedMark = 0;
     }
     delay(2500000);
   }
