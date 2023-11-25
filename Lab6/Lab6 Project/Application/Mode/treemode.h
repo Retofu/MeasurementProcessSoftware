@@ -16,7 +16,7 @@ public:
       currentLed = 0;
     }
   }
-  void Clear() override
+  void SetToDefault() override
   {
     currentLed = 0;
     for(auto it: leds)

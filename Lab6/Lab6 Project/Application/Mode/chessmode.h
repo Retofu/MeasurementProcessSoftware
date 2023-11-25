@@ -25,7 +25,7 @@ public:
     }
     isOdd = false;
   }
-  void Clear() override
+  void SetToDefault() override
   {
     isOdd = true;
     for(auto it: leds)

@@ -5,7 +5,7 @@ class IMode
 {
 public:
   virtual void Update() = 0;
-  virtual void Clear() = 0;
+  virtual void SetToDefault() = 0;
 };
 
 #endif

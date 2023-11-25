@@ -15,7 +15,7 @@ public:
       leds[i]->Toggle();
     }
   }
-  void Clear() override
+  void SetToDefault() override
   {
     for(auto it: leds)
     {

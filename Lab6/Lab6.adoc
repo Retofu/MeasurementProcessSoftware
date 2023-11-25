@@ -211,7 +211,7 @@ private:
 class IButton
 {
 public:
-  virtual bool IsPressed() const = 0; 
+  virtual bool IsPressed() = 0; 
 };
 
 #endif
@@ -229,10 +229,20 @@ template<typename Port, int pinNumber>
 class Button : public IButton
 {
 public:
-  bool IsPressed() const override
+bool IsPressed() override
+{
+  if(((Port::IDR::Get()&(1 << pinNumber))==0) && (isSet))
   {
-    return ((Port::IDR::Get()&(1 << pinNumber))!=(1 << pinNumber));
+    isSet = false;
+  } else if(((Port::IDR::Get()&(1 << pinNumber))==(1 << pinNumber)) && (!isSet))
+  {
+    isSet = true;
+    return true;
   }
+  return 0;
+}
+private:
+  bool isSet = true;
 };
 
 #endif
@@ -303,7 +313,6 @@ ChessMode<pin1, pin2, pin3, pin4> chessMode;
 AllFlickMode<pin1, pin2, pin3, pin4> allflickMode;
 Garland<allflickMode, treeMode, chessMode> garland;
 Button<GPIOC, 13> button;
-uint8_t buttonPressedMark = 0;
 
 int main()
 {
@@ -321,13 +330,9 @@ int main()
   for(;;)
   {
     garland.Update();
-    if(button.IsPressed() and buttonPressedMark == 0)
+    if(button.IsPressed())
     {
       garland.NextMode();
-      buttonPressedMark = 1;
-    } else
-    {
-      buttonPressedMark = 0;
     }
     delay(2500000);
   }

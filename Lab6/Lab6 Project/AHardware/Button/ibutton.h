@@ -4,7 +4,7 @@
 class IButton
 {
 public:
-  virtual bool IsPressed() const = 0; 
+  virtual bool IsPressed() = 0; 
 };
 
 #endif

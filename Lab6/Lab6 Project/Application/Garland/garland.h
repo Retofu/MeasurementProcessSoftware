@@ -5,12 +5,12 @@
 #include <array>
 
 template<auto& ...presets>
-class Garland //: public IMode
+class Garland
 {
 public:
   void NextMode()
   {
-    pCurrentMode->Clear();
+    pCurrentMode->SetToDefault();
     pCurrentMode = mod[i];
     i++;
     if(i == mod.size())
