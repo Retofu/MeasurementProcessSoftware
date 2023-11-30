@@ -1,0 +1,127 @@
+:imagesdir: Lab7Img
+:figure-caption: Рисунок
+:table-caption: Таблица
+:toc-title: Оглавление
+:toc: macro
+
+include::Titul.adoc[lines="1..8"]
+Отчет по лабораторной работе №7
+include::Titul.adoc[lines="11..23"]
+
+toc::[]
+
+== Задание
+
+. Написать что было изучено про таймеры на лекции;
+
+. Написать программу, которая будет переключать все светодиоды с периодом 0,5 секунды. По нажатию кнопки увеличивать период моргания на 0,1 секунды. При достижении периода 1 секунда сбрасывать до 0,5 секунды. Для задания периода использовать таймер TIM2 (для данного варианта).
+
+=== Таймеры
+
+Таймеры в микроконтроллерах предназначены для отсчитывания точных интервалов времени, для измерения частоты, периодов, генерации ШИМа и переменных сигналов различной формы.
+
+Микроконтроллер STM32F411 имеет:
+
+* системный таймер (SYSTEM TIMER) - простой таймер, встроенный в ядро, имеет 24 бита;
+* TIM1 - расширенный 16-битный таймер;
+* TIM2-TIM5 - таймеры общего назначения, причем TIM2 и TIM5 32-битные, а остальные 16-битные;
+* TIM9-TIM11 - 16-битные таймеры.
+
+Настройка таймеров происходит с помощью записи в их регистры нужных бит.
+
+В данной работе будет использоваться таймер TIM2, поэтому рассмотрим его подробнее. TIM2 32-битный, может использоваться для генерации ШИМ сигнала, сравнения, захвата сигнала и генерации одиночного импульса.
+
+Таймер TIM2 тактируется от шины APB1. Входную частоту таймера можно поделить с помощью делителя частоты в регистре PSC. А включение таймера производится битом CEN в регистре CR1 модуля TIM2.
+
+Как только таймер начал считать, его счетчик будет увеличиваться с каждым тактом подающейся на таймер частоты. Значение счетчика хранится в регистре CNT, переполнение считывается из регистра SR бита UIF. +
+Задать произвольный интервал времени до переполнения можно, используя регистр автоперезагрузки ARR. В этот регистр записывается число, до которого будет идти счет. При достижении этого значения, содержимое счетчика CNT обнуляется и формируются прерывание или запрос DMA.
+
+=== Программа
+
+Листинг main.cpp
+[source, cpp, linenums]
+----
+#include "rccregisters.hpp" // for RCC
+#include "gpioaregisters.hpp" // for GPIOA
+#include "pin.h" // for LED toggle
+#include "button.h" // for reñord button push 
+#include "gpiocregisters.hpp" // for GPIOC
+#include "allflickmode.h" // for AllFlickMode
+#include "stkregisters.hpp" // for STK
+#include "scbregisters.hpp" // for ICSR
+#include "tim2registers.hpp" // for TIM2
+
+std::uint32_t TIM2Clock = 1'000'000U;
+std::uint32_t SystemCoreClock = 16'000'000U;
+
+extern "C"
+{
+  int __low_level_init(void)
+  {
+    RCC::APB1ENR::TIM2EN::Enable::Set();
+    return 1;
+  }
+}
+
+using tMsec = std::uint32_t;
+void delay(tMsec period)
+{
+  const auto timerValue = static_cast<std::uint32_t>(period * (TIM2Clock / 1000U - 1U)) ;
+  const auto systemValue = static_cast<std::uint32_t>(SystemCoreClock / 1000'000U - 1U) ;
+  TIM2::PSC::Write(systemValue);
+  TIM2::CR1::URS::OverflowEvent::Set();
+  TIM2::ARR::Write(timerValue);
+  TIM2::SR::UIF::Set(0);
+  TIM2::CNT::Write(0);
+  TIM2::CR1::CEN::Enable::Set();
+  while (TIM2::SR::UIF::Get() == 0)
+  {
+  }
+  TIM2::CR1::CEN::Disable::Set();
+  TIM2::SR::UIF::Set(0);
+}
+
+Pin<GPIOA,5> pin1 ;
+Pin<GPIOC,9> pin2 ;
+Pin<GPIOC,8> pin3 ;
+Pin<GPIOC,5> pin4 ;
+AllFlickMode<pin1, pin2, pin3, pin4> allflickMode;
+Button<GPIOC, 13> button;
+
+int main()
+{
+  //установка порта C.13 (кнопка) на вход
+  GPIOC::MODER::MODER13::Input::Set() ;
+  //Подать тактирование на порт А
+  RCC::AHB1ENR::GPIOAEN::Enable::Set() ;
+  //Подать тактирование на порт С
+  RCC::AHB1ENR::GPIOCEN::Enable::Set() ;
+  GPIOA::MODER::MODER5::Output::Set() ; // установить порт А.5 на выход
+  //Светодиоды на портах С.5, 8, 9 на выход
+  GPIOC::MODER::MODER5::Output::Set() ;
+  GPIOC::MODER::MODER8::Output::Set() ;
+  GPIOC::MODER::MODER9::Output::Set() ;
+  
+  tMsec period = 500U;
+  for(;;)
+  {
+    allflickMode.Update();
+    if(button.IsPressed())
+    {
+      period = (period <= tMsec(1000)) ? (period + tMsec(100U)) : tMsec(500U);
+    }
+    delay(period);
+  }
+  
+  return 1;
+}
+----
+
+На видео представлена работа программы.
+
+.Видео - Демонстрация работы программы
+video::Video.mp4[opts="muted"]
+
+== Вывод по работе
+
+В ходе данной работы было проведено ознакомление с таймерами. Была написана программа, которая переключает светодиоды по заданному алгоритму.
