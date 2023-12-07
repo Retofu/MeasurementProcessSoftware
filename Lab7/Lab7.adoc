@@ -51,7 +51,6 @@ toc::[]
 #include "scbregisters.hpp" // for ICSR
 #include "tim2registers.hpp" // for TIM2
 
-std::uint32_t TIM2Clock = 1'000'000U;
 std::uint32_t SystemCoreClock = 16'000'000U;
 
 extern "C"
@@ -66,15 +65,14 @@ extern "C"
 using tMsec = std::uint32_t;
 void delay(tMsec period)
 {
-  const auto timerValue = static_cast<std::uint32_t>(period * (TIM2Clock / 1000U - 1U)) ;
-  const auto systemValue = static_cast<std::uint32_t>(SystemCoreClock / 1000'000U - 1U) ;
-  TIM2::PSC::Write(systemValue);
+  const auto TimerDevider = SystemCoreClock / 1'000U;
+  TIM2::PSC::Write(TimerDevider);
   TIM2::CR1::URS::OverflowEvent::Set();
-  TIM2::ARR::Write(timerValue);
+  TIM2::ARR::Write(period);
   TIM2::SR::UIF::Set(0);
   TIM2::CNT::Write(0);
   TIM2::CR1::CEN::Enable::Set();
-  while (TIM2::SR::UIF::Get() == 0)
+  while (TIM2::SR::UIF::Get() == 0U)
   {
   }
   TIM2::CR1::CEN::Disable::Set();
