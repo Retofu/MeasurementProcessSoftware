@@ -263,13 +263,13 @@ class Garland
 public:
   void NextMode()
   {
-    pCurrentMode->SetToDefault();
-    pCurrentMode = mod[i];
     i++;
     if(i == mod.size())
     {
       i = 0;
     }
+    pCurrentMode = mod[i];
+    pCurrentMode->SetToDefault();
   }
   void Update()
   {
