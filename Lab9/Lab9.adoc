@@ -99,13 +99,15 @@ int main()
   
   for(;;)
   {
-    if(allflickMode.GetTimerFlag())
+    if(allflickMode.CheckForUpdate())
     {
       allflickMode.Update();
+      allflickMode.SetFlag(false);
     }
-    if(button.GetTimerFlag())
+    if(button.CheckForUpdate())
     {
       period = (period <= tMsec(1000U)) ? (period + tMsec(100U)) : tMsec(500U);
+      button.SetFlag(false);
     }
   }
   
@@ -157,9 +159,8 @@ public:
   {
     if(TIM2::SR::UIF::InterruptPending::IsSet() and TIM2::DIER::UIE::Enable::IsSet())
     {
-      allflickMode.SetTimerFlag(true);
+      allflickMode.SetFlag(true);
       TIM2::SR::UIF::NoInterruptPending::Set();
-      allflickMode.SetTimerFlag(false);
     }
   }
 };
@@ -185,10 +186,9 @@ public:
     {
       if(button.IsPressed())
       {
-        button.SetTimerFlag(true);
+        button.SetFlag(true);
       }
-      TIM5::SR::UIF::NoInterruptPending::Set();
-      button.SetTimerFlag(false);
+      TIM5::SR::UIF::NoInterruptPending::Set();      
     }
   }
 };
@@ -219,16 +219,16 @@ public:
       return true;
     }
   }
-  bool GetTimerFlag()
+  bool CheckForUpdate()
   {
-    return TimerFlag;
+    return Flag;
   }
-  bool SetTimerFlag(bool flag)
+  bool SetFlag(bool flag)
   {
-    TimerFlag = flag;
+    Flag = flag;
   }
 private:
-  bool TimerFlag = false;
+  bool Flag = false;
   bool isSet = true;
 };
 
@@ -262,16 +262,16 @@ public:
       it->Off();
     }
   }
-  bool GetTimerFlag()
+  bool CheckForUpdate()
   {
-    return TimerFlag;
+    return Flag;
   }
-  bool SetTimerFlag(bool flag)
+  bool SetFlag(bool flag)
   {
-    TimerFlag = flag;
+    Flag = flag;
   }
 private:
-  bool TimerFlag = false;
+  bool Flag = false;
   std::array<IPin*, sizeof ...(pins)> leds = {&pins...};
 };
 
