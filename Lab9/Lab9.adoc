@@ -32,19 +32,18 @@ tTimer5::handler,	        //TIM5 global interrupt
 [source, cpp, linenums]
 ----
 #include "rccregisters.hpp" // for RCC
-#include "gpioaregisters.hpp" // for GPIOA
-#include "pin.h" // for LED toggle
-#include "button.h" // for reсord button push 
-#include "gpiocregisters.hpp" // for GPIOC
-#include "allflickmode.h" // for AllFlickMode
-#include "stkregisters.hpp" // for STK
-#include "scbregisters.hpp" // for ICSR
 #include "tim2registers.hpp" // for TIM2
 #include "tim5registers.hpp" // for TIM5
 #include "nvicregisters.hpp" // for NVIC
+#include "gpioaregisters.hpp" // for GPIOA
+#include "gpiocregisters.hpp" // for GPIOC
+#include "pin.h" // for LED toggle
+#include "button.h" // for reсord button push 
+#include "allflickmode.h" // for AllFlickMode
+#include "stkregisters.hpp" // for STK
+#include "scbregisters.hpp" // for ICSR
 
 using tMsec = std::uint32_t;
-const std::uint32_t SystemCoreClock = 16'000'000U;
 tMsec period = 500U;
 
 extern "C"
@@ -53,28 +52,31 @@ extern "C"
   {
     RCC::APB1ENR::TIM2EN::Enable::Set();
     RCC::APB1ENR::TIM5EN::Enable::Set();
+
     NVIC::ISER0::Write(1 << 28U); // разрешили глобальное прерывание для TIM2
-    NVIC::ISER1::Write(1 << 18U); // разрешили глобальное прерывание для TIM5
-    
-    const auto TimerDevider = SystemCoreClock / 1'000U;
       
-    TIM2::PSC::Write(TimerDevider);
+    TIM2::PSC::Write(15999U);
     TIM2::CR1::URS::OverflowEvent::Set();
-    TIM2::ARR::Write(period);
+    TIM2::ARR::Write(500U);
     TIM2::SR::UIF::Set(0);
     TIM2::CNT::Write(0);
     TIM2::DIER::UIE::Enable::Set(); // разрешили прерывание по переполнению
-    TIM2::CR1::CEN::Enable::Set();
     
-    TIM5::PSC::Write(TimerDevider);
+    NVIC::ISER1::Write(1 << 18U); // разрешили глобальное прерывание для TIM5
+    
+    TIM5::PSC::Write(15999U);
     TIM5::CR1::URS::Value1::Set();
     TIM5::ARR::Write(100U);
     TIM5::SR::UIF::Set(0);
     TIM5::CNT::Write(0);
     TIM5::DIER::UIE::Value1::Set(); // разрешили прерывание по переполнению
-    TIM5::CR1::CEN::Enable::Set();
     return 1;
   }
+}
+
+void ReloadTimerPeriod(tMsec period)
+{
+  TIM2::ARR::Write(period);
 }
 
 Pin<GPIOA,5> pin1 ;
@@ -86,16 +88,18 @@ Button<GPIOC, 13> button;
 
 int main()
 {
-  GPIOC::MODER::MODER13::Input::Set() ;
   //Подать тактирование на порт А
   RCC::AHB1ENR::GPIOAEN::Enable::Set() ;
   //Подать тактирование на порт С
   RCC::AHB1ENR::GPIOCEN::Enable::Set() ;
+  GPIOC::MODER::MODER13::Input::Set() ;
   GPIOA::MODER::MODER5::Output::Set() ; // установить порт А.5 на выход
   //Светодиоды на портах C.5,C.8, C.9 на выход
   GPIOC::MODER::MODER5::Output::Set() ;
   GPIOC::MODER::MODER8::Output::Set() ;
   GPIOC::MODER::MODER9::Output::Set() ;
+  TIM2::CR1::CEN::Enable::Set();
+  TIM5::CR1::CEN::Enable::Set();
   
   for(;;)
   {
@@ -106,8 +110,9 @@ int main()
     }
     if(button.CheckForUpdate())
     {
-      period = (period <= tMsec(1000U)) ? (period + tMsec(100U)) : tMsec(500U);
+      period = (period < tMsec(1000)) ? (period + tMsec(100U)) : tMsec(500U);
       button.SetFlag(false);
+      ReloadTimerPeriod(period);
     }
   }
   
@@ -121,13 +126,15 @@ int main()
 #ifndef TIMERSCONFIG
 #define TIMERSCONFIG
 
-#include "timer2.h" // for Timer2
-#include "timer5.h" // for Timer5
 #include "pin.h" // for pin.h
 #include "allflickmode.h" // for AllFlickMode
-#include "button.h" // for button
 #include "gpiocregisters.hpp" // for GPIOC
 #include "gpioaregisters.hpp" // for GPIOA
+#include "tim2registers.hpp" // for TIM2 registers
+#include "timer2.h" // for Timer2
+#include "button.h" // for button
+#include "tim5registers.hpp" // for TIM5 registers
+#include "timer5.h" // for Timer5
 
 extern Pin<GPIOA,5> pin1 ;
 extern Pin<GPIOC,9> pin2 ;
@@ -149,7 +156,7 @@ using tTimer5 = Timer5<button>;
 #ifndef TIMER2
 #define TIMER2
 
-#include "tim2registers.hpp" //for TIM2
+#include "tim2registers.hpp" // for TIM2
 
 template <auto& allflickMode>
 class Timer2
@@ -157,10 +164,10 @@ class Timer2
 public:
   static void handler()
   {
-    if(TIM2::SR::UIF::InterruptPending::IsSet() and TIM2::DIER::UIE::Enable::IsSet())
+    if(TIM2::SR::UIF::Get() == 1 and TIM2::DIER::UIE::Enable::IsSet())
     {
       allflickMode.SetFlag(true);
-      TIM2::SR::UIF::NoInterruptPending::Set();
+      TIM2::SR::UIF::Set(0);
     }
   }
 };
@@ -174,7 +181,7 @@ public:
 #ifndef TIMER5
 #define TIMER5
 
-#include "tim5registers.hpp" //for TIM5
+#include "tim5registers.hpp" // for TIM5
 
 template <auto& button>
 class Timer5
@@ -203,6 +210,7 @@ public:
 #define BUTTON
 
 #include <ibutton.h> // for IButton
+#include <array> // for array
 
 template<typename Port, int pinNumber>
 class Button : public IButton
@@ -218,17 +226,18 @@ public:
       isSet = true;
       return true;
     }
+    return 0;
   }
   bool CheckForUpdate()
   {
-    return Flag;
+    return InterruptionFlag;
   }
   bool SetFlag(bool flag)
   {
-    Flag = flag;
+    InterruptionFlag = flag;
   }
 private:
-  bool Flag = false;
+  bool InterruptionFlag = false;
   bool isSet = true;
 };
 
@@ -250,9 +259,9 @@ class AllFlickMode : public IMode
 public:
   void Update() override
   {
-    for(std::size_t i = 0; i < leds.size(); i++)
+    for(auto it: leds)
     {
-      leds[i]->Toggle();
+      it->Toggle();
     }
   }
   void SetToDefault() override
@@ -264,21 +273,25 @@ public:
   }
   bool CheckForUpdate()
   {
-    return Flag;
+    return InterruptionFlag;
   }
   bool SetFlag(bool flag)
   {
-    Flag = flag;
+    InterruptionFlag = flag;
   }
 private:
-  bool Flag = false;
   std::array<IPin*, sizeof ...(pins)> leds = {&pins...};
+  bool InterruptionFlag = false;
 };
 
 #endif
 ----
 
-Программа после запуска не работает, светодиоды не светятся.
+На видео представлена работа программы.
+
+.Видео - Демонстрация работы программы
+video::Video.mp4[opts="muted"]
 
 == Вывод по работе
-В ходе данной работы было проведено ознакомление с прерываниями. Была написана программа, которая переключает светодиоды по заданному алгоритму.
+
+В ходе данной работы была написана программа, которая переключает светодиоды по заданному алгоритму с использованием таймеров и прерываний.
