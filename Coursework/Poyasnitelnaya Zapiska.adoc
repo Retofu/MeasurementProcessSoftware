@@ -174,3 +174,10 @@ stem:[tau = int  (1-e^(-dt/(R*C)))] +
 [#Общая_архитектура]
 .Общая архитектура проекта
 image::GeneralArch.png[]
+
+Настройка DMA и АЦП будет производиться через класс *AdcDmaDataProvider*. +
+Снятое с потенциометра значение напряжения в классе *Voltage* для фильтрации будет передаваться в класс *DigitalFilter* и далее через интерфейс *IFilter* в *MeasurementTask*, а нефильтрованное значение напряжения через интерфейс *IMeasurementVariable* в класс *MeasurementTask*.
+
+Для реализации работы USART2 и передачи по Bluetooth в классе *USART2* будут настройка регистров и обработчик прерываний USART2. Через класс *UsartDriver* информация о USART2 будут передаваться в класс *BluetoothTask*.
+
+Для запроса передачи данных по Bluetooth будет использован интерфейс *IMeasurementVariableNotifier*, связывающий *MeasurementTask* и *BluetoothTask*. А также для подсветки нужного количества светодиодов в зависимости от напряжения будет создан класс *LEDindication*, который так же наследует интерфейс *IMeasurementVariableNotifier*.
